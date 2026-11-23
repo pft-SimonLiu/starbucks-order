@@ -2,9 +2,10 @@
  * 星巴克團購登記：把網頁送來的登記寫進這份試算表的第一個工作表。
  * 格式：A 欄名字、B 飲料、C 點心、D 備註、E 更新時間。
  * 名字已存在（不分大小寫）就覆蓋那一列，不存在就新增一列。
- * 這支程式要貼在試算表自己的 Apps Script（擴充功能 → Apps Script）。
+ * 用 SHEET_ID 開啟試算表，所以貼在試算表裡的 Apps Script，或 script.google.com 的獨立專案都能跑。
  */
 const TZ = "Asia/Taipei";
+const SHEET_ID = "1iGnpU-7sucXrxdlNw571qdrgpIAZHyYcxRxdvutOTsA";
 
 function doGet() {
   return json_({ ok: true });
@@ -23,7 +24,7 @@ function doPost(e) {
     const note = clean_(d.note, 60);
     if (!name || !drink || !cake) return json_({ ok: false, error: "missing" });
 
-    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+    const sh = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     sh.getRange("D2:E2").setValues([["備註", "更新時間"]]);
 
     const last = sh.getLastRow();
