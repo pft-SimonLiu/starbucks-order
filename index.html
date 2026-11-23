@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>星巴克團購登記</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: status strip with names on top, then one wide form in 3 steps (name, drink, dessert picked from a photo grid) */
+:root{
+  --bg:#f3f6f4; --card:#ffffff; --fg:#14231c; --muted:#5d6e65; --line:#d8e2dc;
+  --accent:#00704a; --accent-fg:#ffffff; --soft:#e2efe8; --danger:#b3261e;
+  --font:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1713; --card:#17221c; --fg:#e8f0eb; --muted:#9bb0a4; --line:#2a3a31;
+  --accent:#3fb98a; --accent-fg:#0b1410; --soft:#203329; --danger:#f2b8b5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1713; --card:#17221c; --fg:#e8f0eb; --muted:#9bb0a4; --line:#2a3a31;
+  --accent:#3fb98a; --accent-fg:#0b1410; --soft:#203329; --danger:#f2b8b5; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;margin:0;
+  padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:960px;margin:0 auto;display:grid;gap:18px}
+h1{font-size:26px;margin:0 0 4px;text-wrap:balance}
+.sub{margin:0;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+.step{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin:26px 0 12px}
+.step:first-of-type{margin-top:0}
+.step b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-fg);font-size:13px}
+label.l{display:block;font-weight:500;margin:0 0 6px;color:var(--muted);font-size:13px}
+input[type=text],select{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:16px;flex-wrap:wrap}
+.row>*{flex:1 1 200px;min-width:0}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg input{position:absolute;opacity:0;width:0;height:0}
+.seg label{margin:0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;cursor:pointer;background:var(--bg)}
+.seg input:checked+label{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+.tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.tab{background:transparent;color:var(--fg);border:1px solid var(--line);padding:6px 14px;border-radius:999px;font-weight:400}
+.tab[aria-pressed=true]{background:var(--soft);border-color:var(--accent);color:var(--accent);font-weight:700}
+.dline{display:flex;gap:10px;align-items:center}
+.dline select{flex:1;min-width:0}
+.pv{display:flex;align-items:flex-end}
+.pv button{white-space:nowrap}
+#pvPanel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.dz{position:relative;min-width:0}
+.dz input{position:absolute;opacity:0;width:0;height:0}
+.dz label{display:flex;align-items:center;gap:10px;padding:4px;border:2px solid var(--line);border-radius:10px;cursor:pointer;background:var(--bg)}
+.dz img{width:48px;height:48px;border-radius:6px;object-fit:cover;display:block;flex:none;background:var(--soft);cursor:zoom-in}
+.dz .t{font-size:13px;line-height:1.35;overflow-wrap:anywhere;min-width:0}
+.dz input:checked+label{border-color:var(--accent);background:var(--soft);font-weight:700}
+.dz input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+#cakeCustom{margin-top:8px}
+#zoom{position:fixed;z-index:50;width:260px;height:260px;border-radius:12px;background:var(--card);border:1px solid var(--line);box-shadow:0 8px 28px rgba(0,0,0,.28);pointer-events:none;overflow:hidden}
+#zoom img{width:100%;height:100%;object-fit:cover;display:block}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);padding:10px 18px;font-weight:700}
+button.ghost{background:transparent;color:var(--accent)}
+button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.status{color:var(--muted);font-size:13px;margin-top:10px;min-height:1.4em}
+.status.err{color:var(--danger)}
+.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>星巴克團購登記</h1>
+    <p class="sub">選一杯飲品和一份點心。重新送出會覆蓋你自己的選擇。</p>
+  </header>
+
+  <form class="card" id="form" autocomplete="off">
+    <div class="step"><b>1</b>你是誰</div>
+    <label class="l" for="name">名字</label>
+    <input type="text" id="name" required maxlength="20" placeholder="例如：Simon">
+
+    <div class="step"><b>2</b>飲品</div>
+    <div class="row">
+      <div>
+        <label class="l" for="drink">品項</label>
+        <select id="drink"></select>
+        <input type="text" id="drinkCustom" maxlength="40" placeholder="輸入想喝的飲品" hidden style="margin-top:8px">
+      </div>
+      <div>
+        <label class="l">溫度</label>
+        <div class="seg" id="temp"></div>
+      </div>
+      <div>
+        <label class="l">杯型</label>
+        <div class="seg" id="size"></div>
+      </div>
+    </div>
+
+    <div class="step"><b>3</b>點心</div>
+    <div class="row">
+      <div>
+        <label class="l" for="cake">品項</label>
+        <div class="dline">
+          <select id="cake"></select>
+        </div>
+        <input type="text" id="cakeCustom" maxlength="40" placeholder="輸入想吃的品項" hidden>
+      </div>
+      <div class="pv">
+        <button type="button" class="ghost" id="pvBtn" aria-expanded="false" aria-controls="pvPanel">蛋糕預覽</button>
+      </div>
+    </div>
+    <div id="pvPanel" hidden>
+      <div class="tabs" id="tabs"></div>
+      <div class="grid" id="cakes"></div>
+    </div>
+
+    <div class="step"><b>4</b>備註（選填）</div>
+    <input type="text" id="note" maxlength="40" placeholder="去冰, 牛奶加滿, 多一個shot, ...etc">
+
+    <div class="actions">
+      <button type="submit" id="save">送出登記</button>
+    </div>
+    <div class="status" id="status" role="status"></div>
+    <p class="small">品項和圖片取自星巴克台灣官網（2026/11/23 查詢）。各門市實際供應可能不同，找不到的請選「其他」自行輸入。</p>
+  </form>
+</div>
+<div id="zoom" hidden><img alt=""></div>
+
+<script>
+/* 貼上 Apps Script 部署後的網址（見 README.md） */
+const API_URL="";
+
+const DRINKS={
+"咖啡":["美式咖啡","那堤","焦糖瑪奇朵","摩卡","卡布奇諾","馥列白","可可瑪奇朵","濃縮咖啡","特選馥郁那堤","特選燕麥奶那堤","太妃核果風味那堤","奶香榛果風味摩卡","榛果風味那堤","黑糖風味奶香咖啡","椰香綿雲那堤","鹹焦糖奶油爆米花風味那堤","焦糖奶香星享那堤","特選西西里風氣泡美式咖啡","雲朵泡泡美式咖啡","特選蜜柚雲朵泡泡美式咖啡","咖啡密斯朵","每日精選咖啡"],
+"茶瓦納":["伯爵茶那堤","福吉茶那堤","經典紅茶那堤","醇濃抹茶那堤","玫瑰蜜香茶那堤","米香桂花紅茶那堤","焦糖奶香紅茶那堤","英式紅茶","洋甘菊花草茶","阿里山烏龍茶","蜜柚紅茶","搖檸檬紅茶","蜜柚檸檬果茶","阿里山蜜柚烏龍青茶"],
+"星冰樂":["咖啡星冰樂","焦糖星冰樂","摩卡可可碎片星冰樂","焦糖可可碎片星冰樂","巧克力可可碎片星冰樂","醇濃抹茶星冰樂","香草風味星冰樂","雙果果汁星冰樂"],
+"蛋白飲品":["可可蛋白雲朵美式咖啡","香草風味蛋白雲朵美式咖啡","香草風味蛋白雲朵那堤","可可蛋白雲朵那堤"],
+"其他":["經典巧克力","不喝飲品"]};
+const CAKES={
+"蛋糕點心":["栗子提拉米蘇蛋糕","杜拜巧克力千層蛋糕","巴斯克起司蛋糕","經典起司蛋糕","草莓起司蛋糕","伯爵慕斯蛋糕","馬斯卡邦輕乳蛋糕","經典咖啡松露生巧克力蛋糕","法式岩漿巧克力蛋糕","經典巧克力塔","經典檸檬塔","莓果可麗露","經典可麗露","原味布丁","比利時巧克力棉花糖餅乾","比利時風格鬆餅","經典法式千層薄餅","葡萄乾司康"]
+};
+const IMG={"莓果可麗露": 0, "栗子提拉米蘇蛋糕": 1, "杜拜巧克力千層蛋糕": 2, "經典巧克力塔": 3, "原味布丁": 4, "伯爵慕斯蛋糕": 5, "經典檸檬塔": 6, "經典可麗露": 7, "草莓起司蛋糕": 8, "比利時巧克力棉花糖餅乾": 9, "巴斯克起司蛋糕": 10, "經典咖啡松露生巧克力蛋糕": 11, "法式岩漿巧克力蛋糕": 12, "比利時風格鬆餅": 13, "馬斯卡邦輕乳蛋糕": 14, "經典法式千層薄餅": 15, "葡萄乾司康": 16, "經典起司蛋糕": 17};
+const TEMPS=["熱","冰","不限"], SIZES=["中杯","大杯","特大杯"];
+const OTHER="其他（自行輸入）", NOCAKE="不點點心";
+const $=id=>document.getElementById(id);
+let tab="全部";
+
+/* drink select */
+(function(){ const s=$("drink");
+  Object.entries(DRINKS).forEach(([g,items])=>{const og=document.createElement("optgroup");og.label=g;
+    items.forEach(v=>{const o=document.createElement("option");o.value=o.textContent=v;og.appendChild(o)});s.appendChild(og)});
+  const o=document.createElement("option");o.value=o.textContent=OTHER;s.appendChild(o);
+  s.onchange=()=>{$("drinkCustom").hidden=s.value!==OTHER};
+})();
+function seg(el,name,list,def){ list.forEach((v,i)=>{
+  const r=document.createElement("input"); r.type="radio"; r.name=name; r.id=name+i; r.value=v; if(v===def)r.checked=true;
+  const l=document.createElement("label"); l.htmlFor=r.id; l.textContent=v; el.append(r,l)})}
+seg($("temp"),"temp",TEMPS,"冰"); seg($("size"),"size",SIZES,"大杯");
+const val=n=>document.querySelector(`input[name=${n}]:checked`).value;
+
+/* dessert: dropdown + photo preview */
+const zoom=$("zoom"), zimg=zoom.querySelector("img");
+function bindZoom(img,name){
+  img.addEventListener("pointerenter",e=>{ if(e.pointerType!=="mouse"||IMG[name]==null) return;
+    zimg.src="img/"+IMG[name]+".jpg"; zoom.hidden=false; place(e)});
+  img.addEventListener("pointermove",place);
+  img.addEventListener("pointerleave",()=>{zoom.hidden=true});
+}
+function place(e){ const W=window.innerWidth,H=window.innerHeight,s=260;
+  let x=e.clientX+18, y=e.clientY+18; if(x+s>W-8)x=e.clientX-s-18; if(y+s>H-8)y=H-s-8;
+  zoom.style.left=Math.max(8,x)+"px"; zoom.style.top=Math.max(8,y)+"px"}
+function syncCake(){
+  const v=$("cake").value;
+  document.querySelectorAll("input[name=cakepv]").forEach(r=>{r.checked=(r.value===v)});
+}
+(function(){
+  const cs=$("cake"), g=$("cakes");
+  const add=(p,v)=>{const o=document.createElement("option");o.value=o.textContent=v;p.appendChild(o)};
+  add(cs,NOCAKE);
+  Object.entries(CAKES).forEach(([grp,items])=>{const og=document.createElement("optgroup");og.label=grp;items.forEach(n=>add(og,n));cs.appendChild(og)});
+  add(cs,OTHER); cs.value=NOCAKE;
+  cs.onchange=()=>{$("cakeCustom").hidden=cs.value!==OTHER; syncCake()};
+  Object.entries(CAKES).forEach(([grp,items])=>items.forEach(n=>{
+    const d=document.createElement("div"); d.className="dz"; d.dataset.g=grp;
+    const id="pv"+IMG[n];
+    const r=document.createElement("input"); r.type="radio"; r.name="cakepv"; r.id=id; r.value=n;
+    r.onchange=()=>{cs.value=n; cs.onchange()};
+    const l=document.createElement("label"); l.htmlFor=id;
+    const i=document.createElement("img"); i.src="img/"+IMG[n]+".jpg"; i.alt=""; i.loading="lazy"; i.width=48; i.height=48; bindZoom(i,n);
+    const t=document.createElement("span"); t.className="t"; t.textContent=n;
+    l.append(i,t); d.append(r,l); g.appendChild(d)}));
+  (Object.keys(CAKES).length>1?["全部",...Object.keys(CAKES)]:[]).forEach(n=>{const b=document.createElement("button");b.type="button";b.className="tab";b.textContent=n;
+    b.setAttribute("aria-pressed",n===tab);
+    b.onclick=()=>{tab=n;document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-pressed",x===b));
+      g.querySelectorAll(".dz").forEach(d=>{d.hidden=!(tab==="全部"||d.dataset.g===tab)})};
+    $("tabs").appendChild(b)});
+  $("pvBtn").onclick=()=>{const open=$("pvPanel").hidden; $("pvPanel").hidden=!open;
+    $("pvBtn").setAttribute("aria-expanded",open); $("pvBtn").textContent=open?"收合預覽":"蛋糕預覽"; if(!open)zoom.hidden=true};
+  syncCake();
+})();
+
+function setStatus(t,err){ const s=$("status"); s.textContent=t; s.className="status"+(err?" err":"") }
+
+try{ const n=localStorage.getItem("sbName"); if(n) $("name").value=n }catch{}
+
+$("form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const name=$("name").value.trim();
+  const drink=$("drink").value===OTHER?$("drinkCustom").value.trim():$("drink").value;
+  const cake=$("cake").value===OTHER?$("cakeCustom").value.trim():$("cake").value;
+  if(!name){ setStatus("請填寫名字。",true); return }
+  if(!drink||!cake){ setStatus("請填寫飲品和點心。",true); return }
+  if(!API_URL){ setStatus("管理者還沒設定儲存位置，暫時無法登記。",true); return }
+  $("save").disabled=true; setStatus("送出中…");
+  try{
+    const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({name,drink,cake,temp:val("temp"),size:val("size"),note:$("note").value.trim()})});
+    const j=await res.json();
+    if(!j.ok) throw new Error(j.error||"unknown");
+    try{ localStorage.setItem("sbName",name) }catch{}
+    setStatus(`已登記，${name}。想改的話重新送出就會覆蓋。`);
+  }catch(err){ setStatus("送出失敗，請稍後再試。",true) }
+  $("save").disabled=false;
+});
+</script>
+</body>
+</html>
